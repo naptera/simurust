@@ -1,5 +1,5 @@
 use num::{Num, NumCast, Complex};
-use std::{ops::AddAssign};
+use std::ops::AddAssign;
 pub trait Value: Num + AddAssign + NumCast + Copy {
     fn cast<V: Value>(other: V) -> Self {
         Self::from(other).expect("Some types are not castable between each other")
@@ -39,7 +39,7 @@ impl Time for f64{
 
 pub trait SimSystem<T: Time, V: Value> {
     fn next_step(&mut self, stream: &mut Vec<V>);
-    fn get_time(&self) -> T;
+    fn get_next_time(&self) -> T;
     fn get_dim(&self) -> usize;
     fn add_input(&mut self, input: usize);
     fn set_outputs(&mut self, output_start: usize);
@@ -72,20 +72,20 @@ impl<T: Time, V: Value> MainSystem<T,V> {
         self.subsystems[subsys_b].add_input(output);
     }
 
-    pub fn run_simulation(&mut self, stop_time: T) {
-        // TODO: stop !before! stop_time is reached
-        while self.time < stop_time {
-            let mut min_time = self.subsystems[0].get_time();
+    pub fn run_simulation(&mut self, stop_time: T) -> T {
+        while self.time <= stop_time {
+            let mut min_time = self.subsystems[0].get_next_time();
             let mut index: usize = 0;
             for i in 1..self.subsystems.len() {
-                if self.subsystems[i].get_time() < min_time {
+                if self.subsystems[i].get_next_time() < min_time {
                     index = i;
-                    min_time = self.subsystems[i].get_time();
+                    min_time = self.subsystems[i].get_next_time();
                 }
             }
             self.time = min_time;
             self.subsystems[index].as_mut().next_step(&mut self.stream);
         }
+        self.time
     }
 
     pub fn get_outputs(&self, subsys: usize) -> Vec<V> {

@@ -25,8 +25,8 @@ impl<T: Time, V: Value> SimSystem<T,V> for AddSystem<T> {
         }
         stream[self.output] = sum;
     }
-    fn get_time(&self) -> T {
-        self.time
+    fn get_next_time(&self) -> T {
+        self.time + self.step_size
     }
     fn get_dim(&self) -> usize {
         1

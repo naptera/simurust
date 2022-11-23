@@ -37,8 +37,8 @@ impl<T: Time, V: Value, const N: usize> SimSystem<T,V> for PolynomialSource<T,V,
         stream[self.output] = output;
     }
 
-    fn get_time(&self) -> T {
-        self.time
+    fn get_next_time(&self) -> T {
+        self.time + self.step_size
     }
 
     fn get_dim(&self) -> usize {
@@ -90,8 +90,8 @@ where T: Time, V: Value {
         self.time += self.step_size;
         stream[self.output] = self.slope*V::cast(self.time) + self.offset;
     }
-    fn get_time(&self) -> T {
-        self.time
+    fn get_next_time(&self) -> T {
+        self.time + self.step_size
     }
     fn get_dim(&self) -> usize {
         1
