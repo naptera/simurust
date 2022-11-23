@@ -85,7 +85,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "simrust"
+name = "simurust"
 version = "0.1.0"
 dependencies = [
  "num",
