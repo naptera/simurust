@@ -6,7 +6,7 @@ use std::ops::{Add, Mul, Neg, Div};
 
 #[derive(Debug, Clone)]
 pub struct Adder<T: Add + Zero + Copy + fmt::Debug, const N: usize> {
-    pub inputs: [*const T;N],
+    inputs: [*const T;N],
     pub output: T,
     time: f64,
     step_size: f64,
@@ -62,7 +62,7 @@ impl<T: Add + Zero + fmt::Debug + Copy, const N: usize> SimSystem for Adder<T, N
 
 #[derive(Debug, Clone)]
 pub struct Negator<T: Neg<Output = T> + Copy + fmt::Debug> {
-    pub input: *const T,
+    input: *const T,
     pub output: T,
     time: f64,
     step_size: f64,
@@ -110,7 +110,7 @@ impl<T: Neg<Output = T> + Copy + fmt::Debug> SimSystem for Negator<T> {
 
 #[derive(Debug, Clone)]
 pub struct Multiplier<T: Mul + One + Copy + fmt::Debug, const N: usize> {
-    pub inputs: [*const T;N],
+    inputs: [*const T;N],
     pub output: T,
     time: f64,
     step_size: f64,
@@ -166,7 +166,7 @@ impl<T: Mul + One + fmt::Debug + Copy, const N: usize> SimSystem for Multiplier<
 
 #[derive(Debug, Clone)]
 pub struct Inverter<T: Div<Output = T> + One + Copy + fmt::Debug> {
-    pub input: *const T,
+    input: *const T,
     pub output: T,
     time: f64,
     step_size: f64,
@@ -212,5 +212,70 @@ impl<T: Div<Output = T> + One + Copy + fmt::Debug> SimSystem for Inverter<T> {
     }
     fn get_next_time(&self) -> f64 {
         self.time + self.step_size
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Gain<T: Mul<Output = T> + Copy + fmt::Debug> {
+    gain: T,
+    input: *const T,
+    pub output: T,
+    time: f64,
+    step_size: f64,
+    output_history: Vec<(f64, T)>
+}
+
+impl<T> Gain<T>
+    where T: Mul<Output = T> + Copy + fmt::Debug 
+{
+    pub fn new(input: *const T) -> Self where T: One{
+        unsafe {
+            Self {
+                gain: T::one(),
+                input,
+                output: *input,
+                time: 0.0,
+                step_size: 0.1,
+                output_history: vec![(0.0, *input)]
+            }
+        }
+    }
+    
+    pub fn from(input: *const T, gain: T, start_time: f64, step_size: f64) -> Self {
+        unsafe {
+            let output = *input * gain;
+            Self {
+                gain,
+                input,
+                output,
+                time: start_time,
+                step_size,
+                output_history: vec![(0.0, output)]
+            }
+        }
+    }
+}
+
+impl<T> fmt::Display for Gain<T>
+    where T: Mul<Output = T> + Copy + fmt::Debug 
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:#?}", self.output_history)
+    }
+}
+
+impl<T> SimSystem for Gain<T>
+    where T: Mul<Output = T> + Copy + fmt::Debug 
+{
+    fn get_next_time(&self) -> f64 {
+        self.time + self.step_size
+    }
+
+    fn next_step(&mut self) {
+        self.time += self.step_size;
+        unsafe {
+            self.output = *self.input * self.gain;
+        }
+        self.output_history.push((self.time, self.output));
     }
 }
