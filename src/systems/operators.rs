@@ -3,6 +3,8 @@ use num::{Zero, One};
 use crate::*;
 use std::fmt;
 use std::ops::{Add, Mul, Neg, Div};
+
+#[derive(Debug, Clone)]
 pub struct Adder<T: Add + Zero + Copy + fmt::Debug, const N: usize> {
     pub inputs: [*const T;N],
     pub output: T,
@@ -58,6 +60,7 @@ impl<T: Add + Zero + fmt::Debug + Copy, const N: usize> SimSystem for Adder<T, N
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Negator<T: Neg<Output = T> + Copy + fmt::Debug> {
     pub input: *const T,
     pub output: T,
@@ -105,7 +108,8 @@ impl<T: Neg<Output = T> + Copy + fmt::Debug> SimSystem for Negator<T> {
     }
 }
 
-pub struct MulSystem<T: Mul + One + Copy + fmt::Debug, const N: usize> {
+#[derive(Debug, Clone)]
+pub struct Multiplier<T: Mul + One + Copy + fmt::Debug, const N: usize> {
     pub inputs: [*const T;N],
     pub output: T,
     time: f64,
@@ -113,7 +117,7 @@ pub struct MulSystem<T: Mul + One + Copy + fmt::Debug, const N: usize> {
     output_history: Vec<(f64, T)>
 }
 
-impl<T: Mul + One + Copy + fmt::Debug, const N: usize> MulSystem<T, N> {
+impl<T: Mul + One + Copy + fmt::Debug, const N: usize> Multiplier<T, N> {
     pub fn new(inputs:  [*const T;N]) -> Self {
         let mut prod = T::one();
         for i in inputs {
@@ -137,13 +141,13 @@ impl<T: Mul + One + Copy + fmt::Debug, const N: usize> MulSystem<T, N> {
     }
 }
 
-impl<T: Mul + One + Copy + fmt::Debug, const N: usize> fmt::Display for MulSystem<T, N> {
+impl<T: Mul + One + Copy + fmt::Debug, const N: usize> fmt::Display for Multiplier<T, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:#?}", self.output_history)
     }
 }
 
-impl<T: Mul + One + fmt::Debug + Copy, const N: usize> SimSystem for MulSystem<T, N> {
+impl<T: Mul + One + fmt::Debug + Copy, const N: usize> SimSystem for Multiplier<T, N> {
     fn next_step(&mut self){
         self.time += self.step_size;
         self.output = T::one();
@@ -160,6 +164,7 @@ impl<T: Mul + One + fmt::Debug + Copy, const N: usize> SimSystem for MulSystem<T
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Inverter<T: Div<Output = T> + One + Copy + fmt::Debug> {
     pub input: *const T,
     pub output: T,
