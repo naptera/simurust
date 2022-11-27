@@ -1,43 +1,55 @@
-use crate::base::*;
-#[derive(Clone, Debug)]
-pub struct AddSystem<T: Time> {
-    inputs: Vec<usize>,
-    output: usize,
-    time: T,
-    step_size: T,
+use num::Zero;
+
+use crate::*;
+use std::fmt;
+use std::ops::Add;
+pub struct AddSystem<'a, T: Add + Zero + Copy + fmt::Debug, const N: usize> {
+    name: &'a str,
+    pub inputs: [*const T;N],
+    pub output: *mut T,
+    time: f64,
+    step_size: f64,
+    output_history: Vec<Vec<(f64, T)>>
 }
-impl<T: Time> AddSystem<T> {
-    pub fn new() -> Self {
+
+impl<'a, T: Add + Zero + Copy + fmt::Debug, const N: usize> AddSystem<'a, T, N> {
+    pub fn new(name: &'a str, inputs:  [*const T;N], output: *mut T) -> Self {
         Self {
-            inputs: Vec::new(),
-            output: 0,
-            time: T::zero(),
-            step_size: T::default_step_size(),
+            name,
+            inputs,
+            output,
+            time: 0.0,
+            step_size: 0.1,
+            output_history: vec![Vec::new()]
         }
+    }
+    pub fn as_mut_raw(&mut self) -> *mut Self {
+        self
+    }
+    pub fn get_output_history(&self) -> &Vec<Vec<(f64, T)>> {
+        &self.output_history
     }
 }
-impl<T: Time, V: Value> SimSystem<T,V> for AddSystem<T> {
-    fn next_step(&mut self, stream: &mut Vec<V>){
-        self.time += self.step_size;
-        let mut sum = V::zero();
-        for i in &self.inputs {
-            sum += stream[*i];
-        }
-        stream[self.output] = sum;
+
+impl<'a, T: Add + Zero + Copy + fmt::Debug, const N: usize> fmt::Display for AddSystem<'a, T, N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {:#?}", self.name, self.output_history)
     }
-    fn get_next_time(&self) -> T {
+}
+
+impl<'a, T: Add + Zero + fmt::Debug + Copy, const N: usize> SimSystem for AddSystem<'a, T, N> {
+    fn next_step(&mut self){
+        self.time += self.step_size;
+        unsafe {
+            *self.output = T::zero();
+            for i in &self.inputs {
+                *self.output = *self.output + **i;
+            }
+            self.output_history[0].push((self.time, *self.output))
+        }
+    }
+    fn get_next_time(&self) -> f64 {
         self.time + self.step_size
     }
-    fn get_dim(&self) -> usize {
-        1
-    }
-    fn add_input(&mut self, input: usize) {
-        self.inputs.push(input);
-    }
-    fn set_outputs(&mut self, output_start: usize) {
-        self.output = output_start;
-    }
-    fn get_output_start(&self) -> usize {
-        self.output
-    }
 }
+

@@ -1,106 +1,63 @@
-use crate::base::*;
-use num::pow::pow;
-#[derive(Clone, Debug)]
-pub struct PolynomialSource<T: Time, V: Value, const N: usize> {
-    coefficients: [V;N],
-    output: usize,
-    time: T,
-    step_size: T,
+use crate::*;
+use num::{pow::pow, Zero, One, NumCast};
+use std::{fmt, ops::{Mul, Add}};
+#[derive(Debug)]
+pub struct PolynomialSource<'a, T: Mul<T, Output = T> + Add + Zero + Copy + fmt::Debug + NumCast + One, const N: usize> {
+    name: &'a str,
+    coefficients: [T;N],
+    pub output: *mut T,
+    time: f64,
+    step_size: f64,
+    output_history: Vec<Vec<(f64, T)>>
 }
 
-impl<T: Time, V: Value, const N: usize> PolynomialSource<T,V,N> {
-    pub fn new() -> Self {
+impl<'a, T: Mul<T, Output = T> + Add + Zero + Copy + fmt::Debug + NumCast + One, const N: usize> PolynomialSource<'a, T, N> {
+    pub fn new(name: &'a str, output: *mut T) -> Self {
+        let mut c = [T::zero();N];
+        c[0] = T::zero();
+        c[1] = T::one();
         Self {
-            coefficients: [V::zero();N],
-            output: 0,
-            time: T::zero(),
-            step_size: T::default_step_size(),
+            name,
+            coefficients: c,
+            output,
+            time: 0.0,
+            step_size: 0.1,
+            output_history: vec![vec![(0.0, T::zero())]]
         }
     }
-    pub fn from(coefficients: [V;N]) -> Self {
+    pub fn from(name: &'a str, output: *mut T, coefficients: [T;N], start_time: f64, step_size: f64) -> Self {
         Self {
+            name,
             coefficients,
-            output: 0,
-            time: T::zero(),
-            step_size: T::default_step_size(),
+            output,
+            time: start_time,
+            step_size,
+            output_history: vec![vec![(start_time, coefficients[0])]]
         }
+    }
+    pub fn get_output_history(&self) -> &Vec<Vec<(f64, T)>> {
+        &self.output_history
     }
 }
 
-impl<T: Time, V: Value, const N: usize> SimSystem<T,V> for PolynomialSource<T,V,N> {
-    fn next_step(&mut self, stream: &mut Vec<V>) {
-        let mut output: V = V::zero();
+impl<'a, T: Mul<T, Output = T> + Add + Zero + Copy + fmt::Debug + NumCast + One, const N: usize> fmt::Display for PolynomialSource<'a, T, N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {:#?}", self.name, self.output_history)
+    }
+}
+
+impl<'a, T: Mul<T, Output = T> + Add + Zero + Copy + fmt::Debug + NumCast + One, const N: usize> SimSystem for PolynomialSource<'a, T, N> {
+    fn next_step(&mut self) {
         self.time += self.step_size;
-        for i in 0..self.coefficients.len() {
-            output += self.coefficients[i]*pow(V::cast(self.time),i);
+        unsafe {
+            *self.output = T::zero();
+            for i in 0..self.coefficients.len() {
+                *self.output = *self.output + self.coefficients[i]*pow(T::from(self.time).unwrap(),i);
+            }
         }
-        stream[self.output] = output;
     }
 
-    fn get_next_time(&self) -> T {
+    fn get_next_time(&self) -> f64 {
         self.time + self.step_size
-    }
-
-    fn get_dim(&self) -> usize {
-        1
-    }
-
-    fn add_input(&mut self, _input: usize) {}
-
-    fn set_outputs(&mut self, output_start: usize) {
-        self.output = output_start;
-    }
-    fn get_output_start(&self) -> usize {
-        self.output
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct LinearSource<T: Time, V: Value> {
-    slope: V,
-    offset: V,
-    output: usize,
-    time: T,
-    step_size: T,
-}
-impl<T: Time, V: Value> LinearSource<T,V> {
-    pub fn new() -> Self {
-        Self {
-            slope: V::one(),
-            offset: V::zero(),
-            output: 0,
-            time: T::zero(),
-            step_size: T::default_step_size(),
-        }
-    }
-    pub fn from(slope: V, offset: V) -> Self {
-        Self {
-            slope,
-            offset,
-            output: 0,
-            time: T::zero(),
-            step_size: T::default_step_size(),
-        }
-    }
-}
-
-impl<T,V> SimSystem<T,V> for LinearSource<T,V>
-where T: Time, V: Value {
-    fn next_step(&mut self, stream: &mut Vec<V>){
-        self.time += self.step_size;
-        stream[self.output] = self.slope*V::cast(self.time) + self.offset;
-    }
-    fn get_next_time(&self) -> T {
-        self.time + self.step_size
-    }
-    fn get_dim(&self) -> usize {
-        1
-    }
-    fn add_input(&mut self, _input: usize) {}
-    fn set_outputs(&mut self, output_start: usize) {
-        self.output = output_start;
-    }
-    fn get_output_start(&self) -> usize {
-        self.output
     }
 }
