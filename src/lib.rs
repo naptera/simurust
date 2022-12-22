@@ -11,6 +11,21 @@ pub trait SimSystem: Display {
     fn get_next_time(&self) -> f64;
 }
 
+pub trait Source<T>: SimSystem {
+    fn get_output_ref(self: &Self, port: usize) -> &T;
+}
+
+pub trait Sink<T>: SimSystem {
+    fn set_input(self: &mut Self, input: *const T, port: usize);
+}
+
+#[macro_export]
+macro_rules! connect {
+    ($a: expr, $i: expr, $b: expr, $j: expr) => {
+        $b.set_input($a.get_output_ref($i), $j)
+    };
+}
+
 pub fn run_simulation<const N: usize>(systems: [*mut dyn SimSystem;N], start_time: f64, stop_time: f64) -> f64 {
     let mut time = start_time;
     if stop_time <= 0.0 {
